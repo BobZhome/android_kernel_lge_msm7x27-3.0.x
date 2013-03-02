@@ -16,8 +16,9 @@ obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_event_log.o
 obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_keypress.o 
 # add lg_diag_screen_shot.c for UTS test by minjong.gong 2010-06-13
 obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_screen_shot.o
-#obj-$(CONFIG_LGE_DIAGTEST) += lg_fw_diag_mtc.o
-#obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_wifi.o
+obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_udm.o
+obj-$(CONFIG_LGE_DIAGTEST) += lg_fw_diag_mtc.o
+obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_wifi.o
 
 obj-$(CONFIG_MACH_MSM7X27_PECAN) += board-pecan.o
 obj-$(CONFIG_MACH_MSM7X27_PECAN) += board-pecan-mmc.o
@@ -28,6 +29,16 @@ obj-$(CONFIG_MACH_MSM7X27_PECAN) += board-pecan-camera.o
 obj-$(CONFIG_MACH_MSM7X27_PECAN) += board-pecan-input.o
 obj-$(CONFIG_MACH_MSM7X27_PECAN) += board-pecan-misc.o
 obj-$(CONFIG_MACH_MSM7X27_PECAN) += board-pecan-pm.o
+
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc.o
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc-mmc.o
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc-snd.o
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc-panel.o
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc-bt.o
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc-camera.o
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc-input.o
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc-misc.o
+obj-$(CONFIG_MACH_MSM7X27_THUNDERC) += board-thunderc-pm.o
 
 obj-$(CONFIG_MACH_MSM7X27_THUNDERG) += board-thunderg.o
 obj-$(CONFIG_MACH_MSM7X27_THUNDERG) += board-thunderg-mmc.o
