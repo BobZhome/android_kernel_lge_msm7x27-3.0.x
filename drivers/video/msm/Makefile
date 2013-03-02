@@ -126,6 +126,11 @@ obj-$(CONFIG_FB_MSM_MDDI_HITACHI_HVGA_GELATO) += mddi_hitachi_hvga_gelato.o
 obj-$(CONFIG_FB_MSM_MDDI_NOVATEK_HVGA) += mddi_novatek_hvga.o
 endif
 
+ifeq ($(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA),y)
+obj-y += mddi_hitachi_hvga.o
+obj-y += mddi_novatek_hvga.o
+endif
+
 ifeq ($(CONFIG_FB_MSM_MIPI_PANEL_DETECT),y)
 obj-y += mipi_toshiba_video_wvga_pt.o mipi_toshiba_video_wsvga_pt.o mipi_toshiba_video_wuxga.o
 obj-y += mipi_novatek_video_qhd_pt.o mipi_novatek_cmd_qhd_pt.o
