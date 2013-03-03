@@ -130,6 +130,8 @@ int lge_lcd_panel = -1;
 
 
 /* LGE_CHANGE [dojip.kim@lge.com] 2010-05-11, support the Sharp Panel (Novatek DDI) */
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HVGA) || \
+	defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
 static int mddi_novatek_pmic_backlight(int level)
 {
 	/* TODO: Backlight control here */
@@ -154,7 +156,10 @@ static struct platform_device mddi_novatek_panel_device = {
 		.platform_data = &mddi_novatek_panel_data,
 	}
 };
+#endif
 
+#if defined(CONFIG_FB_MSM_MDDI_HITACHI_HVGA) || \
+	defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
 static int mddi_hitachi_pmic_backlight(int level)
 {
 	/* TODO: Backlight control here */
@@ -185,7 +190,7 @@ static struct platform_device mddi_hitachi_panel_device = {
 		.platform_data = &mddi_hitachi_panel_data,
 	}
 };
-
+#endif
 
 /* backlight device */
 static struct gpio_i2c_pin bl_i2c_pin[] = {
@@ -276,8 +281,17 @@ void __init lge_add_lcd_devices(void)
 	}
 	printk(KERN_ERR "%s: lge_lcd_panel : %d \n", __func__, lge_lcd_panel);			
 
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+  platform_device_register(&mddi_novatek_panel_device);	
+  platform_device_register(&mddi_hitachi_panel_device);	
+#else	
+/* LGE_CHANGE [dojip.kim@lge.com] 2010-05-11, support the Sharp Panel (Novatek DDI) */
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HVGA)
 	platform_device_register(&mddi_novatek_panel_device);
+#else
 	platform_device_register(&mddi_hitachi_panel_device);
+#endif
+#endif /* CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA */
 
 	msm_fb_add_devices();
 

@@ -39,6 +39,16 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+#define THUNDER_SPRINT_NO_ALC
+#endif
+
+/* LGE_CHANGE [james.jang@lge.com] 2010-12-27, prove LCD */
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+extern void lge_probe_lcd(void);
+extern int g_mddi_lcd_probe;
+#endif
+
 /********************************************
  * Definition
  ********************************************/
@@ -802,6 +812,9 @@ ssize_t aat28xx_store_alc(struct device *dev, struct device_attribute *attr, con
 	int alc;
 	int next_mode;
 
+#ifdef THUNDER_SPRINT_NO_ALC
+	return -EINVAL;
+#endif
 	if (!count)
 		return -EINVAL;
 
@@ -960,7 +973,18 @@ static int __init aat28xx_probe(struct i2c_client *i2c_dev, const struct i2c_dev
 
 	drvdata->client = i2c_dev;
 	drvdata->gpio = pdata->gpio;
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+	lge_probe_lcd();
+
+	if (g_mddi_lcd_probe == 0) { /* Hitachi LCD */
+		drvdata->max_intensity = 19; // 21;
+	}
+	else { /* Novatek LCD */
+		drvdata->max_intensity = 17;
+	}  
+#else
 	drvdata->max_intensity = LCD_LED_MAX;
+#endif
 	if (pdata->max_current > 0)
 		drvdata->max_intensity = pdata->max_current;
 	drvdata->intensity = LCD_LED_MIN;

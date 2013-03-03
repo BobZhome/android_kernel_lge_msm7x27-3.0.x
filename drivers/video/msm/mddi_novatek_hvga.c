@@ -56,6 +56,10 @@ static msm_fb_vsync_handler_type mddi_novatek_vsync_handler = NULL;
 static void *mddi_novatek_vsync_handler_arg;
 static uint16 mddi_novatek_vsync_attempts;
 
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+extern int g_mddi_lcd_probe;
+#endif
+
 #if defined(CONFIG_MACH_MSM7X27_THUNDERG) || defined(CONFIG_MACH_MSM7X27_THUNDERC) || defined(CONFIG_MACH_MSM7X27_THUNDERA)
 /* LGE_CHANGE [dojip.kim@lge.com] 2010-05-11, from mddi_hitachi_hvga.c */
 /* LGE_CHANGE
@@ -411,6 +415,10 @@ static void mddi_novatek_vsync_set_handler(msm_fb_vsync_handler_type handler,	/*
 	}
 }
 
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+extern int ts_set_vreg(unsigned char onoff);
+#endif
+
 static void mddi_novatek_lcd_vsync_detected(boolean detected)
 {
 #if 0 /* Block temporaly till vsync implement */
@@ -528,6 +536,10 @@ static int mddi_novatek_lcd_on(struct platform_device *pdev)
 			is_lcd_on = TRUE;
 		}
 #endif/*BOGUS*/
+
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+	ts_set_vreg(1);
+#endif
 
 		// LCD HW Reset
 		mddi_novatek_lcd_panel_poweron();
@@ -673,6 +685,15 @@ extern int lge_lcd_panel;
 	}
 #endif /*CONFIG_FB_MSM_MDDI_AUTO_DETECT*/
 
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+	gpio_tlmm_config(GPIO_CFG(101, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+			  GPIO_CFG_ENABLE);
+	gpio_direction_input(101);
+//	gpio_*configure(101, GPIOF_CFG_INPUT);
+	if (gpio_get_value(101) != 1)
+		return -ENODEV;
+	g_mddi_lcd_probe = 1;
+#endif
 	ret = platform_driver_register(&this_driver);
 	if (!ret) {
 		pinfo = &novatek_panel_data0.panel_info;

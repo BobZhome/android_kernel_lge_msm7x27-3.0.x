@@ -53,6 +53,10 @@ static msm_fb_vsync_handler_type mddi_hitachi_vsync_handler = NULL;
 static void *mddi_hitachi_vsync_handler_arg;
 static uint16 mddi_hitachi_vsync_attempts;
 
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+extern int g_mddi_lcd_probe;
+#endif
+
 #if defined(CONFIG_MACH_MSM7X27_THUNDERG) || defined(CONFIG_MACH_MSM7X27_THUNDERC) || defined(CONFIG_MACH_MSM7X27_THUNDERA)
 /* Define new structure named 'msm_panel_hitachi_pdata' to use LCD initialization Flag (initialized)
  * 2010-04-21, minjong.gong@lge.com
@@ -534,6 +538,10 @@ static void mddi_hitachi_lcd_vsync_detected(boolean detected)
 	}
 #endif
 }
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+extern int ts_set_vreg(unsigned char onoff);
+#endif
+
 #if defined(CONFIG_MACH_MSM7X27_THUNDERG) || defined(CONFIG_MACH_MSM7X27_THUNDERC) || defined(CONFIG_MACH_MSM7X27_THUNDERA)
 static void hitachi_workaround(void)
 {
@@ -589,7 +597,13 @@ static int mddi_hitachi_lcd_on(struct platform_device *pdev)
 		display_table_hitachi(mddi_hitachi_display_on_3rd, sizeof(mddi_hitachi_display_on_3rd) / sizeof(struct display_table));
 	}
 #endif
+
 	is_lcd_on = TRUE;
+
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+	ts_set_vreg(1);
+#endif
+
 	return 0;
 }
 
@@ -680,7 +694,11 @@ int mddi_hitachi_position(void)
 }
 EXPORT_SYMBOL(mddi_hitachi_position);
 
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+DEVICE_ATTR(hitachi_lcd_onoff, 0666, mddi_hitachi_lcd_show_onoff, mddi_hitachi_lcd_store_onoff);
+#else
 DEVICE_ATTR(lcd_onoff, 0666, mddi_hitachi_lcd_show_onoff, mddi_hitachi_lcd_store_onoff);
+#endif
 
 struct msm_fb_panel_data hitachi_panel_data0 = {
 	.on = mddi_hitachi_lcd_on,
@@ -709,7 +727,11 @@ static int __init mddi_hitachi_lcd_probe(struct platform_device *pdev)
 
 	msm_fb_add_device(pdev);
 
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+	ret = device_create_file(&pdev->dev, &dev_attr_hitachi_lcd_onoff);
+#else
 	ret = device_create_file(&pdev->dev, &dev_attr_lcd_onoff);
+#endif
 
 	return 0;
 }
@@ -733,6 +755,16 @@ static int mddi_hitachi_lcd_init(void)
 	/* TODO: Check client id */
 
 #endif
+
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+  gpio_tlmm_config(GPIO_CFG(101, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	 gpio_direction_input(101);
+//	gpio_configure(101, GPIOF_CFG_INPUT);
+  if (gpio_get_value(101) != 0)
+		return -ENODEV;
+	g_mddi_lcd_probe = 0;
+#endif
+
 	ret = platform_driver_register(&this_driver);
 	if (!ret) {
 		pinfo = &hitachi_panel_data0.panel_info;

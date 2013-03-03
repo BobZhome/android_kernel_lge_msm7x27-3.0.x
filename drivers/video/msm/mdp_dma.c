@@ -33,6 +33,10 @@
 #include "msm_fb.h"
 #include "mddihost.h"
 
+#ifdef CONFIG_MACH_LGE
+#include <mach/board_lge.h>
+#endif
+
 static uint32 mdp_last_dma2_update_width;
 static uint32 mdp_last_dma2_update_height;
 static uint32 mdp_curr_dma2_update_width;
@@ -45,6 +49,10 @@ int mdp_lcd_rd_cnt_offset_fast = 20;
 int mdp_vsync_usec_wait_line_too_short = 5;
 uint32 mdp_dma2_update_time_in_usec;
 uint32 mdp_total_vdopkts;
+
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HITACHI_HVGA)
+int g_mddi_lcd_probe = 0;
+#endif
 
 extern u32 msm_fb_debug_enabled;
 extern struct workqueue_struct *mdp_dma_wq;
