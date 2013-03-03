@@ -4,6 +4,6 @@ obj-$(CONFIG_DIAG_HSIC_PIPE) += diagfwd_hsic.o
 diagchar-objs := diagchar_core.o diagchar_hdlc.o diagfwd.o diagmem.o diagfwd_cntl.o
 
 diagchar-objs += diagchar_core.o diagchar_hdlc.o diagfwd.o diagmem.o diagfwd_cntl.o
-ifeq ($(CONFIG_LGE_DIAGTEST), y)
-diagchar-objs += lg_diag_kernel_service.o
-endif
+#ifeq ($(CONFIG_LGE_DIAGTEST), y)
+#diagchar-objs += lg_diag_kernel_service.o
+#endif

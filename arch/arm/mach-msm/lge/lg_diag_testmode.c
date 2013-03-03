@@ -24,7 +24,7 @@
 #include <linux/parser.h>
 
 #include <mach/board_lge.h>
-#include <lg_backup_items.h>
+#include <mach/lg_backup_items.h>
 
 #include <linux/gpio.h>
 #include <linux/mfd/pmic8058.h>

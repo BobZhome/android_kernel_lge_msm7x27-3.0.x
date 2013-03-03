@@ -42,7 +42,7 @@ extern void ats_mtc_send_key_log_to_eta(struct ats_mtc_key_log_type *);
  * 2010-07-11 taehung.kim@lge.com
  */
 #if defined (CONFIG_MACH_MSM7X27_THUNDERC) || defined(LG_FW_MTC)
-extern unsigned char g_diag_mtc_check;
+//extern unsigned char g_diag_mtc_check;
 extern void mtc_send_key_log_data(struct ats_mtc_key_log_type* p_ats_mtc_key_log);
 #endif
 
@@ -157,11 +157,11 @@ static void event_log_work_func(struct work_struct *work)
  * support MTC using diag port
  * 2010-07-11 taehung.kim@lge.com
  */
-#if defined (CONFIG_MACH_MSM7X27_THUNDERC) || defined(LG_FW_MTC)
-	if(g_diag_mtc_check==1)
-		mtc_send_key_log_data(&ats_mtc_key_log1);
-	else
-#endif
+//#if defined (CONFIG_MACH_MSM7X27_THUNDERC) || defined(LG_FW_MTC)
+//	if(g_diag_mtc_check==1)
+//		mtc_send_key_log_data(&ats_mtc_key_log1);
+//	else
+//#endif
 		ats_mtc_send_key_log_to_eta(&ats_mtc_key_log1);
 }
 

@@ -1123,7 +1123,7 @@ static int __init diagchar_init(void)
 	/* LGE_CHANGES_S [woonghee@lge.com] 2009-12-29, [VS740] kernel diag service */
 #if defined (CONFIG_LGE_DIAGTEST)
 	platform_driver_register(&lg_diag_cmd_driver);
-	lgfw_diag_kernel_service_init((int)driver);
+//	lgfw_diag_kernel_service_init((int)driver);
 #endif
 /* LGE_CHANGES_E [woonghee@lge.com] 2009-12-29, [VS740] */
 	return 0;
