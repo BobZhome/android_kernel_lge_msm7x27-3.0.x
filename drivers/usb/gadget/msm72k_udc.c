@@ -39,6 +39,11 @@
 #include <asm/mach-types.h>
 
 #include <mach/board.h>
+
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+#include <mach/board_lge.h>
+#endif
+
 #include <mach/msm_hsusb.h>
 #include <linux/device.h>
 #include <mach/msm_hsusb_hw.h>
@@ -323,7 +328,11 @@ static int usb_get_max_power(struct usb_info *ui)
 		return USB_WALLCHARGER_CHG_CURRENT;
 
 	if (suspended || !configured)
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+		return 10;
+#else
 		return 0;
+#endif 
 
 	return bmaxpow;
 }

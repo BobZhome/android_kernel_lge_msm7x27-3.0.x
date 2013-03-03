@@ -36,7 +36,7 @@ obj-$(CONFIG_CHARGER_ISP1704)	+= isp1704_charger.o
 obj-$(CONFIG_CHARGER_MAX8903)	+= max8903_charger.o
 obj-$(CONFIG_CHARGER_TWL4030)	+= twl4030_charger.o
 obj-$(CONFIG_CHARGER_GPIO)	+= gpio-charger.o
-obj-$(CONFIG_BATTERY_MSM)       += msm_battery.o
+#obj-$(CONFIG_BATTERY_MSM)       += msm_battery.o
 obj-$(CONFIG_BATTERY_MSM8X60)   += msm_charger.o
 obj-$(CONFIG_PM8058_CHARGER)    += pmic8058-charger.o
 obj-$(CONFIG_ISL9519_CHARGER)   += isl9519q.o
@@ -67,4 +67,4 @@ ifeq ($(CONFIG_MACH_MSM7X27_GISELE),y)
 endif
 BATT_DRIVER ?= msm_battery.o
 msm_batt-objs := $(BATT_DRIVER)
-
+obj-$(CONFIG_BATTERY_MSM)	+= msm_batt.o

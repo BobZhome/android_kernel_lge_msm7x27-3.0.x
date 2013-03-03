@@ -55,7 +55,7 @@
  *
  */
 
-
+#include <linux/slab.h>
 #include <linux/earlysuspend.h>
 #include <linux/err.h>
 #include <linux/module.h>
@@ -66,6 +66,8 @@
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#include <linux/interrupt.h>
+#include <linux/hardirq.h>
 
 #include <asm/atomic.h>
 
@@ -236,6 +238,10 @@ struct msm_battery_info {
   u32 valid_battery_id;
   u32 battery_therm;
 	/* LGE_CHANGES_E [woonghee.park@lge.com]*/
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+	u32 chg_current;
+	u32 batt_thrm_state;
+#endif
 
 	u32(*calculate_capacity) (u32 voltage);
 
@@ -276,6 +282,16 @@ static struct pseudo_batt_info_type pseudo_batt_info = {
   .mode = 0,
 };
 
+// LGE_CHANGE [dojip.kim@lge.com] 2010-08-09
+static int block_charging_state = 1;  //1 : charging , 0: block charging
+
+// LGE_CHANGE [dojip.kim@lge.com] 2010-08-09
+// LGE_CHANGE [dojip.kim@lge.com] 2010-08-09, 
+// no stop charging even if hot or cold battery
+#if defined(CONFIG_LGE_THERM_NO_STOP_CHARGING)
+static int no_stop_charging = 0;
+#endif
+
 static enum power_supply_property msm_power_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 };
@@ -283,6 +299,13 @@ static enum power_supply_property msm_power_props[] = {
 static char *msm_power_supplied_to[] = {
 	"battery",
 };
+
+/* LGE_CHANGES_S [woonghee.park@lge.com] 2010-05_18, [VS740], LG_FW_CHARGING_TIMER*/
+extern void set_charging_timer(int);
+extern void get_charging_timer(int *);
+int charging_timer_enable = -1;
+
+/* LGE_CHANGES_E [woonghee.park@lge.com] 2010-05_18, [VS740]*/
 
 static int msm_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -350,6 +373,14 @@ static enum power_supply_property msm_batt_power_props[] = {
   POWER_SUPPLY_PROP_BATTERY_ID_CHECK,
   POWER_SUPPLY_PROP_BATTERY_TEMP_ADC,
   POWER_SUPPLY_PROP_PSEUDO_BATT,
+  POWER_SUPPLY_PROP_CHARGING_TIMER,
+  POWER_SUPPLY_PROP_BLOCK_CHARGING,
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_BATTERY_THRM_STATE,
+	/* LGE_CHANGE [dojip.kim@lge.com] 2010-08-09 */
+//	POWER_SUPPLY_PROP_THERM_NO_STOP_CHARGING
+#endif
   /* LGE_CHANGES_E [woonghee.park@lge.com]*/
 };
 
@@ -444,11 +475,48 @@ static int msm_batt_power_get_property(struct power_supply *psy,
     val->intval = pseudo_batt_info.mode;
     break;
 
+  case POWER_SUPPLY_PROP_BLOCK_CHARGING:
+    val->intval = block_charging_state;
+    break;
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		val->intval = msm_batt_info.chg_current;
+		break;
+
+	case POWER_SUPPLY_PROP_BATTERY_THRM_STATE:
+		val->intval = msm_batt_info.batt_thrm_state;
+		break;
+
+		/* LGE_CHANGE [dojip.kim@lge.com] 2010-08-09 */
+#if defined(CONFIG_LGE_THERM_NO_STOP_CHARGING)
+	case POWER_SUPPLY_PROP_THERM_NO_STOP_CHARGING:
+		val->intval = no_stop_charging;
+		break;
+#endif /* CONFIG_LGE_THERM_NO_STOP_CHARGING */
+#endif
+		/* LGE_CHANGE_E [dojip.kim@lge.com] 2010-05-17 */
+	
+/* LGE_CHANGE [dojip.kim@lge.com] 2010-05-21, 
+ * add CHG_UI_EVENT_CHARGING_TIMER_EXPIRED (from VS740) 
+ */
+	case POWER_SUPPLY_PROP_CHARGING_TIMER:
+		{
+			u32 intval;
+			if (charging_timer_enable != -1)
+				val->intval = charging_timer_enable;
+			else {
+				get_charging_timer(&intval);
+				val->intval = be32_to_cpu(intval);
+				charging_timer_enable = (int)val->intval;
+			}
+			break;
+		}
 	default:
 		return -EINVAL;
 	}
 	return 0;
 }
+
 
 static struct power_supply msm_psy_batt = {
 	.name = "battery",
@@ -487,6 +555,35 @@ int pseudo_batt_set(struct pseudo_batt_info_type* info)
 }
 EXPORT_SYMBOL(pseudo_batt_set);
 
+int charging_timer_set(int intVal)
+{
+	set_charging_timer(intVal);
+	charging_timer_enable = intVal;
+	return 0;
+}
+
+/* LGE_CHANGE_S [dojip.kim@lge.com] 2010-08-09 */
+extern void block_charging_set(int);
+void batt_block_charging_set(int block)
+{
+	block_charging_state = block;
+	block_charging_set(block);
+}
+EXPORT_SYMBOL(batt_block_charging_set);
+/* LGE_CHANGE_E [dojip.kim@lge.com] 2010-08-09 */
+
+// LGE_CHANGE [dojip.kim@lge.com] 2010-08-09, 
+// no stop charging even if hot or cold battery
+#if defined(CONFIG_LGE_THERM_NO_STOP_CHARGING)
+extern void set_charging_therm_no_stop_charging(int info);
+void msm_batt_therm_no_stop_charging(int no_stop) 
+{
+	no_stop_charging = no_stop;
+	set_charging_therm_no_stop_charging(no_stop);
+}
+EXPORT_SYMBOL(msm_batt_therm_no_stop_charging);
+#endif
+
 struct batt_info batt_info_buf;
 /* LGE_CHANGES_E [woonghee.park@lge.com]*/
 
@@ -503,6 +600,10 @@ struct rpc_reply_batt_chg {
   u32  battery_charging;
   u32  charger_valid;
   u32  chg_batt_event;
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+	u32 chg_current;
+	u32 batt_thrm_state;
+#endif
 };
 
 static struct rpc_reply_batt_chg rep_batt_chg;
@@ -566,6 +667,13 @@ static int msm_batt_get_batt_chg_status_v1(u32 *batt_charging,
   	rep_batt_chg.chg_batt_event =
   		be32_to_cpu(rep_batt_chg.chg_batt_event);
 
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+		rep_batt_chg.chg_current =
+		    be32_to_cpu(rep_batt_chg.chg_current);
+		rep_batt_chg.batt_thrm_state =
+		    be32_to_cpu(rep_batt_chg.batt_thrm_state);
+#endif
+
     msm_batt_info.batt_capacity = rep_batt_chg.battery_level;
     msm_batt_info.voltage_now = rep_batt_chg.battery_voltage;
 		batt_info_buf.valid_batt_id = rep_batt_chg.battery_id;
@@ -575,13 +683,17 @@ static int msm_batt_get_batt_chg_status_v1(u32 *batt_charging,
     *batt_charging = rep_batt_chg.battery_charging;
     *charger_valid = rep_batt_chg.charger_valid;
     *chg_batt_event = rep_batt_chg.chg_batt_event;
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+		msm_batt_info.chg_current = rep_batt_chg.chg_current;
+		msm_batt_info.batt_thrm_state = rep_batt_chg.batt_thrm_state;
+#endif
 	} else {
 		printk(KERN_INFO "%s():No more data in batt_chg rpc reply\n",
 				__func__);
 		return -EIO;
 	}
 
-	charger_hw_type = msm_hsusb_get_charger_type();
+//	charger_hw_type = msm_hsusb_get_charger_type();
 	return 0;
 }
 
@@ -684,7 +796,7 @@ static int msm_batt_get_batt_chg_status(u32 *batt_charging,
   //						batt_info_buf.valid_batt_id, batt_info_buf.batt_therm, batt_info_buf.batt_temp);	
 	/* LGE_CHANGES_E [woonghee.park@lge.com]*/
 
-	charger_hw_type = msm_hsusb_get_charger_type();
+//	charger_hw_type = msm_hsusb_get_charger_type();
 
 	return 0;
 }
@@ -701,17 +813,35 @@ static void msm_batt_update_psy_status(void)
 		batt_info_buf.valid_batt_id = rep_batt_chg.battery_id;
 		batt_info_buf.batt_therm = rep_batt_chg.battery_therm;
 		batt_info_buf.batt_temp = rep_batt_chg.battery_temp;
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+		batt_info_buf.chg_current = rep_batt_chg.chg_current;
+		batt_info_buf.batt_thrm_state = rep_batt_chg.batt_thrm_state;
+#endif
   }
   else
   	msm_batt_get_batt_chg_status(&batt_charging, &charger_valid, &chg_batt_event);
 
-	DBG(KERN_INFO "batt_charging = %u  batt_valid = %u batt_volt = %u\n"
-			"batt_level = %u charger_valid = %u chg_batt_event = %u\n"
-      "batt_id = %u batt_therm = %u batt_temp = %u\n",
-			batt_charging, msm_batt_info.batt_valid,msm_batt_info.voltage_now,
-			msm_batt_info.batt_capacity, charger_valid, chg_batt_event,
-      batt_info_buf.valid_batt_id, batt_info_buf.batt_therm, batt_info_buf.batt_temp);
-
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+	DBG(KERN_DEBUG "batt_charging = %u  batt_valid = %u batt_volt = %u\n"
+	    "batt_level = %u charger_valid = %u chg_batt_event = %u\n"
+	    "batt_id = %u batt_therm = %u batt_temp = %u\n"
+	    "chg_current = %u batt_therm_state = %u\n",
+	    batt_charging, msm_batt_info.batt_valid, msm_batt_info.voltage_now,
+	    msm_batt_info.batt_capacity, charger_valid, chg_batt_event,
+	    batt_info_buf.valid_batt_id, batt_info_buf.batt_therm,
+	    batt_info_buf.batt_temp,
+	    batt_info_buf.chg_current, batt_info_buf.batt_thrm_state);
+#else
+	DBG(KERN_DEBUG "batt_charging = %u  batt_valid = %u batt_volt = %u\n"
+	    "batt_level = %u charger_valid = %u chg_batt_event = %u\n"
+	    "batt_id = %u batt_therm = %u batt_temp = %u\n",
+	    batt_charging, msm_batt_info.batt_valid, msm_batt_info.voltage_now,
+	    msm_batt_info.batt_capacity, charger_valid, chg_batt_event,
+	    batt_info_buf.valid_batt_id, batt_info_buf.batt_therm,
+	    batt_info_buf.batt_temp);
+#endif
+	if (msm_batt_info.batt_capacity < 2)
+		printk(KERN_INFO "batt_level = %u\n", msm_batt_info.batt_capacity);
 	//printk(KERN_INFO "Previous charger valid status = %u"
 	//		"  current charger valid status = %u\n",
 	//		msm_batt_info.charger_valid, charger_valid);
@@ -741,7 +871,12 @@ static void msm_batt_update_psy_status(void)
     	}
 	}
 
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+	else if (msm_batt_info.batt_valid || 
+	    msm_batt_info.valid_battery_id) {
+#else
 	if (msm_batt_info.batt_valid) {
+#endif
 
 		if (msm_batt_info.voltage_now >
 		    msm_batt_info.voltage_max_design)
@@ -757,6 +892,10 @@ static void msm_batt_update_psy_status(void)
 		if (batt_charging && msm_batt_info.charger_valid)
 			msm_batt_info.batt_status =
 			    POWER_SUPPLY_STATUS_CHARGING;
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+			if (msm_batt_info.batt_capacity == 0)
+				msm_batt_info.batt_capacity++;
+#endif
 		else if (!batt_charging)
 			msm_batt_info.batt_status =
 			    POWER_SUPPLY_STATUS_DISCHARGING;
@@ -772,6 +911,10 @@ static void msm_batt_update_psy_status(void)
   	msm_batt_info.battery_therm = batt_info_buf.batt_therm;	
   	/* LGE_CHANGES_E [woonghee.park@lge.com]*/
 
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+		msm_batt_info.chg_current = batt_info_buf.chg_current;
+		msm_batt_info.batt_thrm_state = batt_info_buf.batt_thrm_state;
+#endif
 	} else {
 		msm_batt_info.batt_health = POWER_SUPPLY_HEALTH_UNKNOWN;
 		msm_batt_info.batt_status = POWER_SUPPLY_STATUS_UNKNOWN;
@@ -780,6 +923,10 @@ static void msm_batt_update_psy_status(void)
     msm_batt_info.battery_temp = 0;
     msm_batt_info.battery_therm = batt_info_buf.batt_therm;		
 		/* LGE_CHANGES_E [woonghee.park@lge.com]*/
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+		msm_batt_info.chg_current = batt_info_buf.chg_current;
+		msm_batt_info.batt_thrm_state = batt_info_buf.batt_thrm_state;
+#endif
 
 	}
 

@@ -32,6 +32,225 @@
 #include <mach/msm_rpcrouter.h>
 #include "board-thunderc.h"
 
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+/* LGE_CHANGE_S [dojip.kim@lge.com] 2010-05-11, button leds */
+static void button_backlight_set(struct led_classdev *led_cdev,
+		enum led_brightness value)
+{
+// LGE_CHANGE [james.jang@lge.com] 2010-08-07, again reduce the current
+/* from 0 to 150 mA in 10 mA increments */
+// LGE_CHANGE [dojip.kim@lge.com] 2010-07-14, reduce the current
+//#define MAX_KEYPAD_BL_LEVEL	16  /* 15: 150 mA */
+//#define MAX_KEYPAD_BL_LEVEL	127 /* 2: 20 mA */
+#define MAX_KEYPAD_BL_LEVEL	255 /* 1: 10 mA */
+	pmic_set_led_intensity(LED_KEYPAD, value / MAX_KEYPAD_BL_LEVEL);
+}
+
+struct led_classdev thunderc_custom_leds[] = {
+	{
+		.name = "button-backlight",
+		.brightness_set = button_backlight_set,
+		.brightness = LED_OFF,
+	},
+};
+
+static int register_leds(struct platform_device *pdev)
+{
+	int rc = 0;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(thunderc_custom_leds); i++) {
+		rc = led_classdev_register(&pdev->dev, &thunderc_custom_leds[i]);
+		if (rc) {
+			dev_err(&pdev->dev, "unable to register led class driver: "
+					"thunderc_custom_leds\n");
+			return rc;
+		}
+	}
+
+	return rc;
+}
+
+static void unregister_leds(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(thunderc_custom_leds); ++i)
+		led_classdev_unregister(&thunderc_custom_leds[i]);
+}
+
+static void suspend_leds(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(thunderc_custom_leds); ++i)
+		led_classdev_suspend(&thunderc_custom_leds[i]);
+}
+
+static void resume_leds(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(thunderc_custom_leds); ++i)
+		led_classdev_resume(&thunderc_custom_leds[i]);
+}
+
+int keypad_led_set(unsigned char value)
+{
+	/* LGE_CHANGE [dojip.kim@lge.com] 2010-10-18, conflict with button_led. */
+	return 0;
+	/*
+	return pmic_set_led_intensity(LED_KEYPAD, value);
+	*/
+}
+
+static struct msm_pmic_leds_pdata leds_pdata = {
+	.custom_leds		= thunderc_custom_leds,
+	.register_custom_leds	= register_leds,
+	.unregister_custom_leds	= unregister_leds,
+	.suspend_custom_leds	= suspend_leds,
+	.resume_custom_leds	= resume_leds,
+	.msm_keypad_led_set	= keypad_led_set,
+};
+
+static struct platform_device msm_device_pmic_leds = {
+        .name                   = "pmic-leds",
+	.id                     = -1,
+	.dev.platform_data	= &leds_pdata,
+};
+/* LGE_CHANGE_E [dojip.kim@lge.com] 2010-05-11 */
+#else /* THUNDER_VZW */
+/* add led device for VS660 Rev.D by  younchan.kim 2010-05-27  */
+
+static void pmic_mpp_isink_set(struct led_classdev *led_cdev,
+		enum led_brightness value)
+{
+	int mpp_number;
+	int on_off;
+
+	if (!strcmp(led_cdev->name ,"red"))
+		mpp_number = (int)PM_MPP_20;
+	else if (!strcmp(led_cdev->name, "green"))
+		mpp_number = (int)PM_MPP_21;
+	else if (!strcmp(led_cdev->name, "blue"))
+		mpp_number = (int)PM_MPP_22;
+	else
+		return;
+
+	if(value == 0)
+		on_off = (int)PM_MPP__I_SINK__SWITCH_DIS;
+	else
+		on_off = (int)PM_MPP__I_SINK__SWITCH_ENA;
+
+	pmic_secure_mpp_config_i_sink((enum mpp_which)mpp_number,
+			PM_MPP__I_SINK__LEVEL_20mA, (enum mpp_i_sink_switch)on_off);
+}
+
+static void button_backlight_set(struct led_classdev* led_cdev, enum led_brightness value)
+{
+	int i;
+	int mpp_number;
+	int on_off;
+
+	if(value == 0)
+		on_off = (int)PM_MPP__I_SINK__SWITCH_DIS;
+	else
+		on_off = (int)PM_MPP__I_SINK__SWITCH_ENA;
+
+	mpp_number = (int)PM_MPP_19;
+	for(i=0; i<4; i++){
+		pmic_secure_mpp_config_i_sink((enum mpp_which)mpp_number,PM_MPP__I_SINK__LEVEL_20mA, (enum mpp_i_sink_switch)on_off);
+		mpp_number++;
+	}
+}
+struct led_classdev thunderc_custom_leds[] = {
+	#if 0
+	{
+		.name = "red",
+		.brightness_set = pmic_mpp_isink_set,
+		.brightness = LED_OFF,
+	},
+	{
+		.name = "green",
+		.brightness_set = pmic_mpp_isink_set,
+		.brightness = LED_OFF,
+	},
+	{
+		.name = "blue",
+		.brightness_set = pmic_mpp_isink_set,
+		.brightness = LED_OFF,
+	},
+	#else
+	{
+		.name = "button-backlight",
+		.brightness_set = button_backlight_set,
+		.brightness = LED_OFF,
+	},
+	#endif
+};
+
+static int register_leds(struct platform_device *pdev)
+{
+	int rc;
+	int i;
+
+	for(i = 0 ; i < ARRAY_SIZE(thunderc_custom_leds) ; i++) {
+		rc = led_classdev_register(&pdev->dev, &thunderc_custom_leds[i]);
+		if (rc) {
+			dev_err(&pdev->dev, "unable to register led class driver : thunderc_custom_leds \n");
+			return rc;
+		}
+		pmic_mpp_isink_set(&thunderc_custom_leds[i], LED_OFF);
+	}
+
+	return rc;
+}
+
+static void unregister_leds (void)
+{
+	int i;
+	for (i = 0; i< ARRAY_SIZE(thunderc_custom_leds); ++i)
+		led_classdev_unregister(&thunderc_custom_leds[i]);
+}
+
+static void suspend_leds (void)
+{
+	int i;
+	for (i = 0; i< ARRAY_SIZE(thunderc_custom_leds); ++i)
+		led_classdev_suspend(&thunderc_custom_leds[i]);
+}
+
+static void resume_leds (void)
+{
+	int i;
+	for (i = 0; i< ARRAY_SIZE(thunderc_custom_leds); ++i)
+		led_classdev_resume(&thunderc_custom_leds[i]);
+}
+
+int keypad_led_set(unsigned char value)
+{
+	int ret;
+
+	ret = pmic_set_led_intensity(LED_KEYPAD, value);
+
+	return ret;
+}
+
+static struct msm_pmic_leds_pdata leds_pdata = {
+	.custom_leds		= thunderc_custom_leds,
+	.register_custom_leds	= register_leds,
+	.unregister_custom_leds	= unregister_leds,
+	.suspend_custom_leds	= suspend_leds,
+	.resume_custom_leds	= resume_leds,
+	.msm_keypad_led_set	= keypad_led_set,
+};
+
+static struct platform_device msm_device_pmic_leds = {
+	.name                           = "pmic-leds",
+	.id                                     = -1,
+	.dev.platform_data      = &leds_pdata,
+};
+#endif /* CONFIG_MACH_MSM7X27_THUNDERC_SPRINT */
+
 static u32 thunderc_battery_capacity(u32 current_soc)
 {
 	if(current_soc > 100)
@@ -42,7 +261,12 @@ static u32 thunderc_battery_capacity(u32 current_soc)
 
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
 	.voltage_min_design     = 3200,
+	// LGE_CHANGE [dojip.kim@lge.com] 2010-08-07, [SPRINT] 4200 -> 4250
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+	.voltage_max_design     = 4250,
+#else
 	.voltage_max_design     = 4200,
+#endif
 	.avail_chg_sources      = AC_CHG | USB_CHG ,
 	.batt_technology        = POWER_SUPPLY_TECHNOLOGY_LION,
 	.calculate_capacity		= thunderc_battery_capacity,
@@ -171,12 +395,12 @@ static struct platform_device thunderc_carkit_device = {
 	},
 };
 
-static struct platform_device msm_device_pmic_leds = {
+/*static struct platform_device msm_device_pmic_leds = {
 	.name = "pmic-leds",
 	.id = -1,
 	.dev.platform_data = "button-backlight",
 };
-
+*/
 int thunderc_vibrator_power_set(int enable)
 {
 	static int is_enabled = 0;

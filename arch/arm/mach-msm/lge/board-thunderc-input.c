@@ -79,6 +79,22 @@ static unsigned int keypad_col_gpios[] = {37, 38};
 
 #define KEYMAP_INDEX(row, col) ((row)*ARRAY_SIZE(keypad_col_gpios) + (col))
 
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT)
+static const unsigned short keypad_keymap_thunder[9] = {
+#if defined(CONFIG_MACH_MSM7X27_THUNDERC_SPRINT_VM)
+	[KEYMAP_INDEX(0, 0)] = KEY_MENU,
+	[KEYMAP_INDEX(0, 1)] = KEY_HOME,
+#else
+	[KEYMAP_INDEX(0, 0)] = KEY_MENU,
+	[KEYMAP_INDEX(0, 1)] = KEY_HOME,
+#endif
+	[KEYMAP_INDEX(0, 2)] = KEY_VOLUMEUP,
+	[KEYMAP_INDEX(1, 0)] = KEY_SEARCH,
+	[KEYMAP_INDEX(1, 1)] = KEY_BACK,
+	[KEYMAP_INDEX(1, 2)] = KEY_VOLUMEDOWN,
+	[KEYMAP_INDEX(2, 0)] = KEY_CAMERA,
+};
+#else
 static const unsigned short keypad_keymap_thunder[][8] = {
 	[KEYMAP_INDEX(0, 0)] = KEY_MENU,
 	[KEYMAP_INDEX(0, 1)] = KEY_HOME,
@@ -88,6 +104,7 @@ static const unsigned short keypad_keymap_thunder[][8] = {
 	[KEYMAP_INDEX(1, 2)] = KEY_VOLUMEDOWN,
 	[KEYMAP_INDEX(2, 0)] = KEY_CAMERA,
 };
+#endif
 
 int thunderc_matrix_info_wrapper(struct gpio_event_input_devs *input_dev, struct gpio_event_info *info, void **data, int func)
 {
@@ -204,7 +221,11 @@ static struct platform_device ts_i2c_device = {
 };
 
 static int ts_power_save_on;
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+int ts_set_vreg(unsigned char onoff)
+#else
 static int ts_set_vreg(unsigned char onoff)
+#endif
 {
 	int rc = 0;
 	static struct regulator *vreg_touch;
@@ -244,6 +265,10 @@ static int ts_set_vreg(unsigned char onoff)
 	}
 	return rc;
 }
+// LGE_CHANGE [dojip.kim@lge.com] 2010-07-26, HACK: early wakeup for performance
+#ifdef CONFIG_MACH_MSM7X27_THUNDERC_SPRINT
+EXPORT_SYMBOL(ts_set_vreg);
+#endif
 
 static struct touch_platform_data ts_pdata = {
 	.ts_x_min = TS_X_MIN,
